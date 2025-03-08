@@ -20,6 +20,11 @@ from django.http import JsonResponse
 from .services.yadisk_service import YandexDiskService  # Импортируем сервис
 from .services.exceptions import InvalidYandexLinkError, OAuthRequiredError, YandexDiskError
 
+from django.http import JsonResponse
+from django.views import View
+from django.middleware.csrf import get_token
+import json
+from typing import Any, Dict
 
 class IndexView(TemplateView):
     template_name = 'index.html'
@@ -31,11 +36,12 @@ class IndexView(TemplateView):
         return context
 
 
-class CatView(View):
+class CatView(TemplateView):
     """
     Асинхронное представление для получения списка файлов
     на Яндекс.Диске по публичной ссылке.
     """
+    template_name = 'cat.html'
 
     async def get(self, request, *args, **kwargs):
         """
@@ -54,9 +60,9 @@ class CatView(View):
         yandex_service = YandexDiskService(access_token)
 
         try:
-            files = await yandex_service.get_file_list(public_key)
-            print(files)
-            # return render(request, 'cat.html', {'files': files})
+            file_list = await yandex_service.get_file_list(public_key)
+            context = self.get_context_data(file_list=file_list, public_key=public_key)
+            return self.render_to_response(context)
 
         except InvalidYandexLinkError:
             return render(request, 'index.html', {'error_message': 'Ошибка! Ссылка не относится к Яндекс.Диску.'})
@@ -70,6 +76,71 @@ class CatView(View):
 
         except Exception as e:
             return render(request, 'index.html', {'error_message': f'Неизвестная ошибка: {e}'})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        return context
+
+
+import aiohttp
+from django.http import HttpResponse
+from django.views import View
+from django.http import JsonResponse
+import json
+
+class DownloadView(View):
+    """
+    Асинхронный обработчик загрузки файлов с Яндекс.Диска.
+
+    Принимает POST-запрос с параметрами:
+    - public_key (str): Публичный ключ для доступа.
+    - file_ids (list[str]): Список идентификаторов файлов (всегда 1 файл).
+
+    Возвращает файл или ошибку.
+    """
+
+    async def post(self, request, *args, **kwargs):
+        try:
+            public_key = request.POST.get("public_key", "")
+            file_ids = request.POST.getlist("file_ids[]", [])
+
+            if not public_key or not file_ids:
+                return JsonResponse({"error": "Missing public_key or file_ids"}, status=400)
+
+            resource_id = file_ids[0]  # Один ID
+            print(f"Public Key: {public_key}, Resource ID: {resource_id}")
+
+            async with aiohttp.ClientSession() as session:
+                url = f"https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key={public_key}&path=/{resource_id}"
+                async with session.get(url) as resp:
+                    if resp.status == 401:
+                        return JsonResponse({"error": "Authorization required"}, status=403)
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        return JsonResponse({"error": f"Yandex error: {resp.status} - {error_text}"}, status=502)
+                    data = await resp.json()
+                    download_url = data.get("href")
+                    if not download_url:
+                        return JsonResponse({"error": "No download link in response"}, status=502)
+
+                async with session.get(download_url) as file_resp:
+                    if file_resp.status != 200:
+                        return JsonResponse({"error": f"Download failed: {file_resp.status}"}, status=502)
+                    file_content = await file_resp.read()
+
+            return HttpResponse(file_content, content_type='application/octet-stream', headers={
+                'Content-Disposition': f'attachment; filename="{resource_id}"'
+            })
+
+        except aiohttp.ClientError as e:
+            return JsonResponse({"error": f"Network error: {str(e)}"}, status=503)
+        except Exception as e:
+            return JsonResponse({"error": f"Unexpected error: {str(e)}"}, status=500)
+
+    async def get(self, request, *args, **kwargs):
+        return HttpResponse("Method not allowed", status=405)
+
+
 
 
 class OAuthCallbackView(View):

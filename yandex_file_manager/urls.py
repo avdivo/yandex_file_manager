@@ -16,10 +16,11 @@ Including another URLconf
 """
 # from django.contrib import admin
 from django.urls import path
-from .views import IndexView, CatView  # Импортируем классы представлений
+from .views import IndexView, CatView, DownloadView  # Импортируем классы представлений
 
 urlpatterns = [
     path('', IndexView.as_view(), name='index'),  # Используем IndexView
     path('cat/', CatView.as_view(), name='cat'),  # Используем CatView
+    path('download/', DownloadView.as_view(), name='download'),  # Используем DownloadView
 ]
 

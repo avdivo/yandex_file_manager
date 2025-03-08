@@ -1,10 +1,308 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Файловый менеджер</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f4f4f4;
+            overflow-x: hidden;
+            padding-bottom: 40px; /* Добавляем отступ внизу для закрепленного пути */
+        }
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            z-index: 1000;
+            flex-wrap: wrap;
+            overflow: hidden;
+        }
+        .header span {
+            max-width: 30%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: inline-block;
+        }
+        .container {
+            margin-top: 100px;
+            padding: 20px;
+        }
+        .file-list {
+            list-style: none;
+            padding: 0;
+        }
+        .file-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-radius: 10px;
+            background: white;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            font-size: 18px;
+            position: relative;
+            z-index: 1;
+        }
+        .file-list li a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .file-list li .actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .filter-buttons, .download-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .filter-buttons button {
+            background: #17a2b8;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .filter-buttons button.active {
+            background: #005f73;
+        }
+        .download-options button {
+            background: #28a745;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .actions button {
+            background: #ffc107;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .actions input {
+            transform: scale(1.5);
+        }
+        .download-options label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+        }
+        .path {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #007bff;
+            color: white;
+            padding: 10px 15px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+            font-size: 16px;
+            z-index: 999;
+        }
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                padding: 10px;
+            }
+            .download-options, .filter-buttons {
+                justify-content: center;
+                width: 100%;
+                margin-top: 10px;
+            }
+            .filter-buttons button {
+                flex: 1;
+                min-width: 100px;
+            }
+        }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const filterButtons = document.querySelectorAll(".filter-buttons button");
+            const allFiles = document.querySelectorAll(".file-list li");
+            const downloadSelectedBtn = document.getElementById("download-selected");
+            const singleDownloadButtons = document.querySelectorAll(".actions button");
+            const publicKey = document.querySelector(".path span").getAttribute("data-public-key");
+
+            function filterFiles(type) {
+                allFiles.forEach(file => {
+                    const isImage = file.getAttribute("data-type") === "media";
+                    const isDoc = file.getAttribute("data-type") === "document";
+                    const isFolder = file.getAttribute("data-type") === "folder";
+
+                    if (type === "all" || (type === "images" && isImage) || (type === "docs" && isDoc) || isFolder) {
+                        file.style.display = "flex";
+                    } else {
+                        file.style.display = "none";
+                    }
+                });
+            }
+
+            filterButtons.forEach(button => {
+                button.addEventListener("click", function() {
+                    filterButtons.forEach(btn => btn.classList.remove("active"));
+                    this.classList.add("active");
+                    filterFiles(this.id.replace("filter-", ""));
+                });
+            });
+
+            // Универсальная асинхронная функция для загрузки одного файла
+            async function downloadFile(fileName) {
+                const formData = new FormData();
+                formData.append('public_key', publicKey);
+                formData.append('file_ids[]', fileName); // Передаем имя файла
+
+                const response = await fetch('/download/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Ошибка загрузки файла ${fileName}`);
+                }
+
+                // Извлекаем имя файла из заголовка Content-Disposition
+                const contentDisposition = response.headers.get('Content-Disposition');
+                const filename = contentDisposition
+                    ? contentDisposition.match(/filename="(.+)"/)?.[1]
+                    : fileName; // Запасное имя — имя файла
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = filename; // Используем имя от сервера
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }
+
+            // Обработка одиночной загрузки файла
+            singleDownloadButtons.forEach(button => {
+                button.addEventListener("click", function() {
+                    const fileItem = this.closest("li");
+                    const fileName = fileItem.getAttribute("data-name"); // Используем имя файла
+                    downloadFile(fileName).catch(error => console.error('Ошибка:', error));
+                });
+            });
+
+            // Обработка загрузки выбранных файлов (последовательная загрузка)
+            downloadSelectedBtn.addEventListener("click", async function() {
+                const selectedCheckboxes = document.querySelectorAll(".actions input[type='checkbox']:checked");
+                const selectedNames = Array.from(selectedCheckboxes).map(cb => {
+                    const fileItem = cb.closest("li");
+                    return fileItem ? fileItem.getAttribute("data-name") : null; // Используем имя файла
+                }).filter(name => name !== null);
+
+                if (selectedNames.length > 0) {
+                    // Загружаем файлы по очереди
+                    for (const fileName of selectedNames) {
+                        try {
+                            await downloadFile(fileName); // Ждем завершения загрузки каждого файла
+                        } catch (error) {
+                            console.error(`Ошибка с файлом ${fileName}:`, error);
+                        }
+                    }
+                }
+            });
+
+            // Функция для получения CSRF-токена из cookies
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            document.getElementById("filter-all").classList.add("active");
+        });
+    </script>
 </head>
 <body>
-
+    <div class="header">
+        <div class="download-options">
+            <button id="download-selected">Скачать</button>
+        </div>
+        <div class="filter-buttons">
+            <button id="filter-all">Все</button>
+            <button id="filter-images">Медиа</button>
+            <button id="filter-docs">Документы</button>
+        </div>
+    </div>
+    <div class="container">
+        <ul class="file-list">
+            {% for file in file_list %}
+                {% if file.type == 'folder' %}
+                <li data-name="{{ file.name }}" data-type="{{ file.type }}">
+                    <a href="#">📁 {{ file.name }}</a>
+                </li>
+                {% elif file.type == 'media' %}
+                <li data-name="{{ file.name }}" data-type="{{ file.type }}">
+                    <span>🖼 {{ file.name }}</span>
+                    <div class="actions">
+                        <input type="checkbox">
+                        <button>⬇</button>
+                    </div>
+                </li>
+                {% elif file.type == 'document' %}
+                <li data-name="{{ file.name }}" data-type="{{ file.type }}">
+                    <span>📄 {{ file.name }}</span>
+                    <div class="actions">
+                        <input type="checkbox">
+                        <button>⬇</button>
+                    </div>
+                </li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="path">
+        <span data-public-key="{{ public_key }}">{{ public_key }}</span>
+    </div>
+    {% csrf_token %}
 </body>
 </html>
