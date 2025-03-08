@@ -16,9 +16,10 @@ Including another URLconf
 """
 # from django.contrib import admin
 from django.urls import path
-from .views import index, cat_view
+from .views import IndexView, CatView  # Импортируем классы представлений
 
 urlpatterns = [
-    path('', index, name='index'),
-    path('cat/', cat_view, name='cat'),
+    path('', IndexView.as_view(), name='index'),  # Используем IndexView
+    path('cat/', CatView.as_view(), name='cat'),  # Используем CatView
 ]
+
