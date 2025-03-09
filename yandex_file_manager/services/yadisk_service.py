@@ -85,6 +85,9 @@ class YandexDiskService:
             # Формируем URL для получения ссылки на скачивание
             url = f"{self.base_url}/download?public_key={public_key}&path=/{file_name}"
             async with session.get(url) as resp:
+                # Проверяем наличие файла
+                if resp.status == 404:
+                    raise DownloadError("Не удалось найти файл", 404)
                 # Проверяем авторизацию
                 if resp.status == 401:
                     raise DownloadError("Требуется авторизация", 403)

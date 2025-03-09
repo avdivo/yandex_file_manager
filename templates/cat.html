@@ -90,7 +90,7 @@
             background: #005f73;
         }
         .download-options button {
-            background: #28a745;
+            background: #17a2b8;
             color: white;
             padding: 10px 15px;
             border: none;
@@ -160,6 +160,24 @@
                 min-width: 100px;
             }
         }
+        .error-message {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: #17a2b8;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 2000;
+            animation: fadeInOut 5s ease-in-out;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(-20px); }
+            10% { opacity: 1; transform: translateY(0); }
+            90% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
     </style>
     <script>
     document.addEventListener("DOMContentLoaded", function() {
@@ -174,7 +192,6 @@
                 const isImage = file.getAttribute("data-type") === "media";
                 const isDoc = file.getAttribute("data-type") === "document";
                 const isFolder = file.getAttribute("data-type") === "folder";
-
                 if (type === "all" || (type === "images" && isImage) || (type === "docs" && isDoc) || isFolder) {
                     file.style.display = "flex";
                 } else {
@@ -191,13 +208,21 @@
             });
         });
 
-        // Универсальная асинхронная функция для загрузки одного файла
+        // Показать уведомление об ошибке
+        function showError(fileName, errorMessage) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = `Ошибка с "${fileName}": ${errorMessage}`;
+            document.body.appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 5000); // Удаляем через 5 секунд
+        }
+
         async function downloadFile(fileName, fileItem) {
             const spinner = fileItem.querySelector('.spinner');
             spinner.style.display = 'inline-block';
 
             if (!fileName) {
-                console.error('Имя файла не определено');
+                showError("Неизвестный файл", "Имя файла не определено");
                 spinner.style.display = 'none';
                 return;
             }
@@ -216,14 +241,15 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Ошибка загрузки файла ${fileName}`);
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Ошибка ${response.status}`);
                 }
 
                 const contentDisposition = response.headers.get('Content-Disposition');
-                let filename = fileName; // Используем data-name по умолчанию
+                let filename = fileName;
                 if (contentDisposition) {
                     const match = contentDisposition.match(/filename="([^"]+)"/) || contentDisposition.match(/filename\*=UTF-8''([^;]+)/);
-                    if (match) filename = decodeURIComponent(match[1]); // Декодируем имя из заголовка
+                    if (match) filename = decodeURIComponent(match[1]);
                 }
 
                 const blob = await response.blob();
@@ -236,36 +262,34 @@
                 a.click();
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
+            } catch (error) {
+                showError(fileName, error.message);
             } finally {
                 spinner.style.display = 'none';
             }
         }
 
-        // Обработка одиночной загрузки файла
         singleDownloadButtons.forEach(button => {
             button.addEventListener("click", function() {
                 const fileItem = this.closest("li");
                 const fileName = fileItem.getAttribute("data-name");
-                downloadFile(fileName, fileItem).catch(error => console.error('Ошибка:', error));
+                downloadFile(fileName, fileItem);
             });
         });
 
-        // Обработка загрузки выбранных файлов (асинхронная загрузка)
         downloadSelectedBtn.addEventListener("click", async function() {
             const selectedCheckboxes = document.querySelectorAll(".actions input[type='checkbox']:checked");
             const selectedFiles = Array.from(selectedCheckboxes).map(cb => {
                 const fileItem = cb.closest("li");
-                return fileItem ? { name: fileItem.getAttribute("data-name"), item: fileItem } : null;
+                const fileName = fileItem.getAttribute("data-name");
+                return fileItem ? { name: fileName, item: fileItem } : null;
             }).filter(file => file !== null);
 
             if (selectedFiles.length > 0) {
-                await Promise.all(selectedFiles.map(file =>
-                    downloadFile(file.name, file.item).catch(error => console.error(`Ошибка с файлом ${file.name}:`, error))
-                ));
+                await Promise.all(selectedFiles.map(file => downloadFile(file.name, file.item)));
             }
         });
 
-        // Функция для получения CSRF-токена из cookies
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
