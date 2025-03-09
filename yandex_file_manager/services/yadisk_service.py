@@ -1,6 +1,7 @@
 import aiohttp
 from typing import Dict, List
 
+from .cache import CacheService
 from .exceptions import InvalidYandexLinkError, OAuthRequiredError, YandexDiskError, DownloadError
 
 
@@ -28,40 +29,44 @@ class YandexDiskService:
         if not self._is_yandex_link(public_key):
             raise InvalidYandexLinkError("Ссылка не относится к Яндекс.Диску", 422)
 
-        url = f"{self.base_url}?public_key={public_key}"
-        headers = {}
+        file_list = CacheService.get_cache(public_key)  # Пробуем получить список файла из кэша
+        if file_list is None:
+            # В кэше списка нет или он устарел
+            url = f"{self.base_url}?public_key={public_key}"
+            headers = {}
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers) as response:
-                # Запрашиваем список элементов папки
-                if response.status == 200:
-                    data = await response.json()
-                    items = data.get('_embedded', {}).get('items', [])
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
+                    # Запрашиваем список элементов папки
+                    if response.status == 200:
+                        data = await response.json()
+                        items = data.get('_embedded', {}).get('items', [])
 
-                    # Формируем список файлов и папок и определяет тип (документ, медиа, папка)
-                    file_list = []
-                    for item in items:
-                        name = item['name']
-                        item_type = item['type']
-                        mime_type = item.get('mime_type', '')
+                        # Формируем список файлов и папок и определяет тип (документ, медиа, папка)
+                        file_list = []
+                        for item in items:
+                            name = item['name']
+                            item_type = item['type']
+                            mime_type = item.get('mime_type', '')
 
-                        if item_type == 'dir':
-                            category = 'folder'
-                        elif mime_type.startswith('image') or mime_type.startswith('audio') or mime_type.startswith(
-                                'video'):
-                            category = 'media'
-                        else:
-                            category = 'document'
-                        file_list.append({'name': name, 'type': category})
+                            if item_type == 'dir':
+                                category = 'folder'
+                            elif mime_type.startswith('image') or mime_type.startswith('audio') or mime_type.startswith(
+                                    'video'):
+                                category = 'media'
+                            else:
+                                category = 'document'
+                            file_list.append({'name': name, 'type': category})
 
-                    return file_list
+                        CacheService.save_cache(public_key, file_list)  # Сохраняем список в кэше
+                        return file_list
 
-                elif response.status == 401:
-                    raise OAuthRequiredError("Для этого ресурса требуется авторизация.", 401)
-                elif response.status == 404:
-                    raise YandexDiskError("Ошибка! Ссылка не найдена или недоступна.", 404)
-                else:
-                    raise RuntimeError(await response.text(), response.status)
+                    elif response.status == 401:
+                        raise OAuthRequiredError("Для этого ресурса требуется авторизация.", 401)
+                    elif response.status == 404:
+                        raise YandexDiskError("Ошибка! Ссылка не найдена или недоступна.", 404)
+                    else:
+                        raise RuntimeError(await response.text(), response.status)
 
     def _is_yandex_link(self, public_key: str) -> bool:
         """

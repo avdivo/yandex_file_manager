@@ -1,5 +1,5 @@
 from django.views import View
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views.generic import TemplateView
 from django.http import JsonResponse, HttpResponse
 
@@ -54,7 +54,8 @@ class CatView(TemplateView):
             return self.render_to_response(context)  # Отображаем страницу
 
         except InvalidYandexLinkError as e:
-            return render(request, 'index.html', {'error_message': e})
+            print(e)
+            return redirect('index.html', {'error_message': str(e)})
 
         except OAuthRequiredError as e:
             return render(request, 'index.html', {'error_message': e})
