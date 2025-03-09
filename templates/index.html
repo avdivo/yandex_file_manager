@@ -76,13 +76,7 @@
         </div>
     </div>
 <div class="footer">
-    {% block footer %}
-        {% if error_message %}
-            {{ error_message }}  <!-- Если ошибка есть, показываем ее -->
-        {% else %}
-            Пожалуйста, укажите публичную ссылку на папку Yandex.Disk  <!-- Если ошибки нет, показываем стандартное сообщение -->
-        {% endif %}
-    {% endblock %}
+    {{message}}
 </div>
 </body>
 </html>

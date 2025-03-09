@@ -1,24 +1,19 @@
 import aiohttp
-from typing import Any, Dict, List
-from django.conf import settings
+from typing import Dict, List
 
-from .exceptions import InvalidYandexLinkError, OAuthRequiredError, YandexDiskError
+from .exceptions import InvalidYandexLinkError, OAuthRequiredError, YandexDiskError, DownloadError
+
 
 class YandexDiskService:
     """
     Сервис для работы с Яндекс.Диском.
     """
 
-    def __init__(self, access_token: str = None):
+    def __init__(self):
         """
         Инициализация сервиса.
-
-        :param access_token: OAuth-токен для доступа к Яндекс.Диску (опционально).
         """
-        self.access_token = access_token
         self.base_url = "https://cloud-api.yandex.net/v1/disk/public/resources"
-        self.OAUTH_URL = "https://oauth.yandex.ru/authorize"
-
 
     async def get_file_list(self, public_key: str) -> List[Dict]:
         """
@@ -31,28 +26,14 @@ class YandexDiskService:
             - 'id': Идентификатор файла или папки.
         """
         if not self._is_yandex_link(public_key):
-            raise InvalidYandexLinkError("Ссылка не относится к Яндекс.Диску")
-
-        if not self._is_public_link(public_key) and not self.access_token:
-            auth_url = (
-                f"{self.OAUTH_URL}?response_type=code"
-                f"&client_id={settings.YANDEX_CLIENT_ID}"
-                f"&redirect_uri={settings.YANDEX_REDIRECT_URI}"
-            )
-            raise OAuthRequiredError(auth_url)
+            raise InvalidYandexLinkError("Ссылка не относится к Яндекс.Диску", 422)
 
         url = f"{self.base_url}?public_key={public_key}"
         headers = {}
 
-        # Если ссылка не публичная, добавляем OAuth-токен
-        if not self._is_public_link(public_key) and not self.access_token:
-            raise Exception("Для доступа к приватной папке требуется OAuth-токен. Пройдите авторизацию.")
-
-        if self.access_token:
-            headers["Authorization"] = f"OAuth {self.access_token}"
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers) as response:
-                print(url)
+                # Запрашиваем список элементов папки
                 if response.status == 200:
                     data = await response.json()
                     items = data.get('_embedded', {}).get('items', [])
@@ -61,7 +42,6 @@ class YandexDiskService:
                     file_list = []
                     for item in items:
                         name = item['name']
-                        resource_id = item['resource_id']
                         item_type = item['type']
                         mime_type = item.get('mime_type', '')
 
@@ -72,22 +52,16 @@ class YandexDiskService:
                             category = 'media'
                         else:
                             category = 'document'
-                        file_list.append({'name': name, 'type': category, 'id': resource_id})
+                        file_list.append({'name': name, 'type': category})
 
                     return file_list
 
                 elif response.status == 401:
-                    auth_url = (
-                        f"{self.OAUTH_URL}?response_type=code"
-                        f"&client_id={settings.YANDEX_CLIENT_ID}"
-                        f"&redirect_uri={settings.YANDEX_REDIRECT_URI}"
-                    )
-                    raise OAuthRequiredError(auth_url)
+                    raise OAuthRequiredError("Для этого ресурса требуется авторизация.", 401)
                 elif response.status == 404:
-                    raise YandexDiskError("Ошибка! Ссылка не найдена или недоступна.")
+                    raise YandexDiskError("Ошибка! Ссылка не найдена или недоступна.", 404)
                 else:
-                    raise RuntimeError(f"Ошибка! Код: {response.status}, сообщение: {await response.text()}")
-
+                    raise RuntimeError(await response.text(), response.status)
 
     def _is_yandex_link(self, public_key: str) -> bool:
         """
@@ -98,12 +72,36 @@ class YandexDiskService:
         """
         return "yadi.sk" in public_key or "disk.yandex.ru" in public_key
 
-    def _is_public_link(self, public_key: str) -> bool:
+    async def download_file_from_yandex(self, public_key: str, file_name: str) -> tuple[bytes, str]:
         """
-        Проверка, является ли ссылка публичной.
+        Асинхронно загружает файл с Яндекс.Диска по публичному ключу и имени файла.
 
-        :param public_key: Публичная ссылка на ресурс Яндекс.Диска.
-        :return: True, если ссылка публичная, иначе False.
+        :param public_key: Публичный ключ папки.
+        :param file_name: Имя файла для загрузки.
+
+       :return: Кортеж (содержимое файла, имя файла).
         """
-        return True
-        return public_key.startswith("https://yadi.sk/d/") or public_key.startswith("https://yadi.sk/i/")
+        async with aiohttp.ClientSession() as session:
+            # Формируем URL для получения ссылки на скачивание
+            url = f"{self.base_url}/download?public_key={public_key}&path=/{file_name}"
+            async with session.get(url) as resp:
+                # Проверяем авторизацию
+                if resp.status == 401:
+                    raise DownloadError("Требуется авторизация", 403)
+                # Проверяем общий статус ответа
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    raise DownloadError(f"Ошибка Яндекс.Диска: {resp.status} - {error_text}", 502)
+                # Извлекаем данные ответа
+                data = await resp.json()
+                download_url = data.get("href")
+                if not download_url:
+                    raise DownloadError("Ссылка на скачивание не найдена", 502)
+
+            # Загружаем файл по полученной ссылке
+            async with session.get(download_url) as file_resp:
+                if file_resp.status != 200:
+                    raise DownloadError(f"Не удалось скачать файл: {file_resp.status}", 502)
+                file_content = await file_resp.read()
+
+        return file_content, file_name

@@ -1,6 +1,10 @@
 class YandexDiskError(Exception):
     """Общее исключение для работы с Яндекс.Диском."""
-    pass
+
+    def __init__(self, message, status):
+        self.message = message
+        self.status = status
+        super().__init__(self.message)
 
 
 class InvalidYandexLinkError(YandexDiskError):
@@ -8,9 +12,11 @@ class InvalidYandexLinkError(YandexDiskError):
     pass
 
 
-class OAuthRequiredError(Exception):
+class OAuthRequiredError(YandexDiskError):
     """Исключение, если требуется OAuth-авторизация."""
+    pass
 
-    def __init__(self, auth_url: str):
-        self.auth_url = auth_url
-        super().__init__("Для доступа требуется OAuth-авторизация.")
+
+class DownloadError(YandexDiskError):
+    """Базовый класс для ошибок загрузки."""
+    pass
