@@ -1,3 +1,2 @@
 Django~=5.1.7
 aiohttp~=3.11.13
-asgiref~=3.8.1
