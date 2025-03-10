@@ -27,9 +27,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['0.0.0.0', '127.0.0.1', '328c22e35a29.vps.myjino.ru']
 
-CORS_ALLOWED_ORIGINS = [
-    '328c22e35a29.vps.myjino.ru',
-]
+CSRF_TRUSTED_ORIGINS = ['https://328c22e35a29.vps.myjino.ru']
+
 
 # Application definition
 
