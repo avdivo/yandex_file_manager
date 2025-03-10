@@ -64,8 +64,7 @@ class CatView(TemplateView):
             return redirect(f'{reverse("index")}?error_message={e}')
 
         except Exception as e:
-            raise
-            return redirect(f'{reverse("index")}?error_message={f'Неизвестная ошибка: {e}'}')
+            return redirect(f'{reverse("index")}?error_message=Неизвестная ошибка: {e}')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

@@ -1,8 +1,13 @@
-# Каталог организаций
+# Загрузка файлов с Yandex.Disk
 
 
-[**Swagger**](https://328c22e35a29.vps.myjino.ru/docs): https://328c22e35a29.vps.myjino.ru/docs  
-[GitHub](https://github.com/avdivo/org_catalog): https://github.com/avdivo/org_catalog
+[**Посмотреть проект**](https://328c22e35a29.vps.myjino.ru): https://328c22e35a29.vps.myjino.ru  
+[GitHub](https://github.com/avdivo/yandex_file_manager.git): https://github.com/avdivo/yandex_file_manager.git
+
+```url
+https://disk.yandex.ru/d/yYcDCdIrgJzb6Q
+```
+Публичная папка для проверки
 
 
 ## Описание
@@ -27,7 +32,7 @@
    Для одиночной загрузки файла служит кнопка загрузки в строке файла.
 3. Процесс загрузки файла отмечается анимированным спинером, в поле соответствующего файла.  
 4. Сообщения об ошибках показываются во всплывающих сообщениях.
-5. В нижней строке отображается ссылка на открытую публичную папку.
+5. В нижней строке отображается ссылка на открытую публичную папку. И кнопка перехода на стартовую страницу.
 
 ## Структура проекта
 
@@ -57,180 +62,51 @@ yandex_file_manager/
 ```
 
 ## Используемые зависимости
-fastapi==0.115.2  
-uvicorn==0.34.0  
-SQLAlchemy==2.0.37  
-GeoAlchemy2==0.17.0  
-asyncpg==0.30.0  
-alembic==1.14.1  
-python-dotenv==1.0.1  
-psycopg2-binary==2.9.10  
-shapely==2.0.7  
+Django~=5.1.7  
+aiohttp~=3.11.13
 
-## Файл .env
-DB_NAME=<Имя БД>  
-DB_USER=<Пользователь БД>  
-DB_PASSWORD=<Пароль БД>  
-APP_PORTS=8000:8000 <Внешний и внутренний порты контейнера. Без контейнера запускается на внутреннем>  
-API_KEY=<Статический ключ для авторизации> (YXZkaXZv)
-
-Файл нужно поместить в корень проекта, папку org_catalog.  
-При запуске на сервере внешний порт контейнера можно указать другой:  
-APP_PORTS=80:8000  
-
-
-## Установка и запуск в Docker контейнере
+## Установка и запуск
 1. Открыть терминал.
 2. Перейти в папку, где будет проект.
 3. Клонировать репозиторий:
     ```bash
-    git clone https://github.com/avdivo/org_catalog
+    git clone https://github.com/avdivo/yandex_file_manager
     ```
 4. Войти в папку проекта.
     ```bash
-    cd org_catalog
+    cd yandex_file_manager
     ```
-   > Не забыть поместить или создать в папке файл .env
-5. Запустить PostgtesSQL + PostGIS в контейнере
-    ```bash
-    docker compose up -d db 
-    ```
-   > Автоматически создастся БД и в ней активируется PostGIS
-
-6. Создать и активировать виртуальное окружение
+5. Создать и активировать виртуальное окружение
     ```bash
     python3 -m venv venv
     source venv/bin/activate 
     ```
-   и установить зависимости
+6. Установить зависимости
    ```bash
     pip install -r requirements.txt 
    ```
-7. Выполнить миграции Alembic
+7. Запустить проект
     ```bash
-    alembic upgrade head 
+    python manage.py runserver
     ```
-8. Заполнить БД тестовыми данными
+   
+##  Запуск в Docker контейнере
+
+1. Открыть терминал.
+2. Перейти в папку, где будет проект.
+3. Клонировать репозиторий:
     ```bash
-    python init_db.py
+    git clone https://github.com/avdivo/yandex_file_manager
     ```
-9. Запустить проект в контейнере
+4. Войти в папку проекта.
     ```bash
-    docker compose up -d
+    cd yandex_file_manager
     ```
-10. Остановить проект и удалить БД:
+5. Запустить контейнер:
     ```bash
-    docker compose down -v  # Без -v БД не удаляется
+    docker compose up
     ```
-11. Запустить проект повторно (если БД существует)
+6. Остановить и удалить контейнер:
     ```bash
-    docker compose up --build
+    docker compose down
     ```
-
-## Для запуска без контейнера
-После п.8 (если БД будет в контейнере) можно запустить проект:  
-```
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-```
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload >> /home/$USER/uvicorn.log 2>&1
-```
-```
-python -m app.main
-```
-
-## Использование
-Для вызова эндпоинтов API требуется авторизация. Передавайте ключ X-API-KEY в заголовке запроса со значением YXZkaXZv.
-```bash
-
-curl -X 'GET' \
-  'https://328c22e35a29.vps.myjino.ru/api/v1/organizations/1' \
-  -H 'accept: application/json' \
-  -H 'X-API-KEY: YXZkaXZv'
-```
-https://328c22e35a29.vps.myjino.ru/api/v1/organizations/1
-```
-Возвращает детальную информацию об организации по её уникальному идентификатору.
-```
-
-
-
-```bash
-curl -X 'GET' \
-  'https://328c22e35a29.vps.myjino.ru/api/v1/organizations/search/?organization_name=%D0%90%D0%B2%D1%82%D0%BE%D0%9C%D0%B8%D1%80' \
-  -H 'accept: application/json' \
-  -H 'X-API-KEY: YXZkaXZv'
-```
-https://328c22e35a29.vps.myjino.ru/api/v1/organizations/search/?organization_name=АвтоМир
-```
-Позволяет искать организации по частичному или полному названию.
-```
-
-```bash
-curl -X 'GET' \
-  'https://328c22e35a29.vps.myjino.ru/api/v1/activity/2/organizations' \
-  -H 'accept: application/json' \
-  -H 'X-API-KEY: YXZkaXZv'
-```
-https://328c22e35a29.vps.myjino.ru/api/v1/activity/2/organizations
-```
-Возвращает список организаций, относящихся к указанному виду деятельности.
-```
-
-```bash
-curl -X 'GET' \
-  'https://328c22e35a29.vps.myjino.ru/api/v1/activity/35/organizations/deep' \
-  -H 'accept: application/json' \
-  -H 'X-API-KEY: YXZkaXZv'
-```
-https://328c22e35a29.vps.myjino.ru/api/v1/activity/35/organizations/deep
-```
-Возвращает список организаций, относящихся к указанному виду деятельности, а также ко всем его вложенным категориям.
-```
-
-```bash
-curl -X 'GET' \
-  'https://328c22e35a29.vps.myjino.ru/api/v1/geo/radius?lat=55.819&lon=37.53&radius=10' \
-  -H 'accept: application/json' \
-  -H 'X-API-KEY: YXZkaXZv'
-```
-https://328c22e35a29.vps.myjino.ru/api/v1/geo/radius?lat=55.819&lon=37.53&radius=10
-```
-Возвращает список организаций, расположенных в пределах заданного радиуса относительно указанной точки на карте.
-```
-
-```bash
-curl -X 'GET' \
-  'https://328c22e35a29.vps.myjino.ru/api/v1/geo/rectangle?top_left_lat=55.81&top_left_lon=37.51&bottom_right_lat=55.9&bottom_right_lon=37.55' \
-  -H 'accept: application/json' \
-  -H 'X-API-KEY: YXZkaXZv'
-```
-https://328c22e35a29.vps.myjino.ru/api/v1/geo/rectangle?top_left_lat=55.81&top_left_lon=37.51&bottom_right_lat=55.9&bottom_right_lon=37.55
-```
-Возвращает список организаций, находящихся в пределах заданной прямоугольной области, определенной координатами верхнего левого и нижнего правого углов.
-```
-
-```bash
-curl -X 'GET' \
-  'https://328c22e35a29.vps.myjino.ru/api/v1/buildings/5/organizations' \
-  -H 'accept: application/json' \
-  -H 'X-API-KEY: YXZkaXZv'
-```
-https://328c22e35a29.vps.myjino.ru/api/v1/buildings/5/organizations
-```
-Возвращает список всех организаций, находящихся в указанном здании.
-```
-
-
-
-## Тестирование
-Для запуска основных тестов нужно запустить тестирование
-```
-pytests tests/
-```
-
-## Миграции
-После создания миграции в ней закомментированы строки вызывающие ошибки
-- op.drop_table('spatial_ref_sys')  
-- op.create_index('idx_building_location', 'building', ['location'], unique=False, postgresql_using='gist')  
-- op.drop_index('idx_building_location', table_name='building', postgresql_using='gist')  

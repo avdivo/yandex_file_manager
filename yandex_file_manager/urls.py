@@ -23,4 +23,3 @@ urlpatterns = [
     path('cat/', CatView.as_view(), name='cat'),  # Используем CatView
     path('download/', DownloadView.as_view(), name='download'),  # Используем DownloadView
 ]
-

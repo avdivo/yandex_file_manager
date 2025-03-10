@@ -3,6 +3,7 @@ from typing import Optional, List
 from django.core.cache import cache
 from django.utils.timezone import now
 
+
 class CacheService:
     CACHE_TIMEOUT = 60  # Время в секундах, после которого данные считаются устаревшими
 
