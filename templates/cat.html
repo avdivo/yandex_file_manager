@@ -4,182 +4,213 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Файловый менеджер</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background: #f4f4f4;
-            overflow-x: hidden;
-            padding-bottom: 40px;
-        }
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #f4f4f4;
+        overflow-x: hidden;
+        padding-bottom: 40px;
+    }
+    .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: #007bff;
+        color: white;
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        border-radius: 10px;
+        z-index: 1000;
+        flex-wrap: wrap;
+        overflow: hidden;
+    }
+    .header span {
+        max-width: 30%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        display: inline-block;
+    }
+    .container {
+        margin-top: 100px;
+        padding: 20px;
+    }
+    .file-list {
+        list-style: none;
+        padding: 0;
+    }
+    .file-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        border-radius: 10px;
+        background: white;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        font-size: 18px;
+        position: relative;
+        z-index: 1;
+    }
+    .file-list li a {
+        text-decoration: none;
+        color: #007bff;
+        font-weight: bold;
+        display: block;
+        width: 100%;
+        padding: 10px;
+        border-radius: 10px;
+    }
+    .file-list li .actions {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+    }
+    .filter-buttons, .download-options {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .filter-buttons button {
+        background: #17a2b8;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        box-sizing: border-box; /* Добавлено */
+    }
+    .filter-buttons button.active {
+        background: #005f73;
+    }
+    .download-options button {
+        background: #17a2b8;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        box-sizing: border-box; /* Добавлено */
+    }
+    .actions button {
+        background: #ffc107;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        box-sizing: border-box; /* Добавлено */
+    }
+    .actions input {
+        transform: scale(1.5);
+    }
+    .download-options label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 18px;
+    }
+    .path {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #007bff;
+        color: white;
+        padding: 10px 15px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+        font-size: 16px;
+        z-index: 999;
+    }
+    .spinner {
+        display: none;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #ccc;
+        border-top: 3px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-left: 10px;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    @media (max-width: 768px) {
         .header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: #007bff;
-            color: white;
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
-            z-index: 1000;
-            flex-wrap: wrap;
-            overflow: hidden;
-        }
-        .header span {
-            max-width: 30%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            display: inline-block;
-        }
-        .container {
-            margin-top: 100px;
-            padding: 20px;
-        }
-        .file-list {
-            list-style: none;
-            padding: 0;
-        }
-        .file-list li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            border-radius: 10px;
-            background: white;
-            margin-bottom: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            font-size: 18px;
-            position: relative;
-            z-index: 1;
-        }
-        .file-list li a {
-            text-decoration: none;
-            color: #007bff;
-            font-weight: bold;
-            display: block;
-            width: 100%;
+            text-align: center;
             padding: 10px;
-            border-radius: 10px;
         }
-        .file-list li .actions {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-        .filter-buttons, .download-options {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+        .download-options, .filter-buttons {
+            justify-content: center;
+            width: 100%;
+            margin-top: 10px;
         }
         .filter-buttons button {
-            background: #17a2b8;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
+            flex: 1;
+            min-width: 100px;
         }
-        .filter-buttons button.active {
-            background: #005f73;
-        }
-        .download-options button {
-            background: #17a2b8;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .actions button {
-            background: #ffc107;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .actions input {
-            transform: scale(1.5);
-        }
-        .download-options label {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 18px;
-        }
-        .path {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #007bff;
-            color: white;
-            padding: 10px 15px;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            overflow: hidden;
-            font-size: 16px;
-            z-index: 999;
-        }
-        .spinner {
-            display: none;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #ccc;
-            border-top: 3px solid #007bff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-left: 10px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                padding: 10px;
-            }
-            .download-options, .filter-buttons {
-                justify-content: center;
-                width: 100%;
-                margin-top: 10px;
-            }
-            .filter-buttons button {
-                flex: 1;
-                min-width: 100px;
-            }
-        }
-        .error-message {
-            position: fixed;
-            top: 100px;
-            right: 20px;
-            background: #17a2b8;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            z-index: 2000;
-            animation: fadeInOut 5s ease-in-out;
-        }
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: translateY(-20px); }
-            10% { opacity: 1; transform: translateY(0); }
-            90% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-20px); }
-        }
-    </style>
-    <script>
+    }
+    .error-message {
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        background: #17a2b8;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        z-index: 2000;
+        animation: fadeInOut 5s ease-in-out;
+    }
+    @keyframes fadeInOut {
+        0% { opacity: 0; transform: translateY(-20px); }
+        10% { opacity: 1; transform: translateY(0); }
+        90% { opacity: 1; transform: translateY(0); }
+        100% { opacity: 0; transform: translateY(-20px); }
+    }
+    .home-button {
+        background: #17a2b8;
+        color: white;
+        padding: 5px 15px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 14px;
+        margin-left: 10px;
+        float: right;
+        box-sizing: border-box; /* Добавлено */
+    }
+    /* Стили при наведении без изменения размера */
+    button:hover, .home-button:hover {
+
+        background-color: #005f73;
+    }
+    /* Убираем все стили при нажатии */
+    button:active, .home-button:active {
+        outline: none;
+    }
+    /* Убираем все стили при фокусе */
+    button:focus, .home-button:focus {
+        outline: none;
+    }
+    /* Применяем box-sizing ко всем элементам */
+    * {
+        box-sizing: border-box;
+    }
+</style>
+<script>
     document.addEventListener("DOMContentLoaded", function() {
         const filterButtons = document.querySelectorAll(".filter-buttons button");
         const allFiles = document.querySelectorAll(".file-list li");
@@ -347,9 +378,10 @@
             {% endfor %}
         </ul>
     </div>
-    <div class="path">
-        <span data-public-key="{{ public_key }}">{{ public_key }}</span>
-    </div>
+<div class="path">
+    <span data-public-key="{{ public_key }}">{{ public_key }}</span>
+    <a href="{% url 'index' %}" class="home-button">На главную</a>
+</div>
     {% csrf_token %}
 </body>
 </html>
