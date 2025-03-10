@@ -27,6 +27,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['0.0.0.0', '127.0.0.1', '328c22e35a29.vps.myjino.ru']
 
+CORS_ALLOWED_ORIGINS = [
+    '328c22e35a29.vps.myjino.ru',
+]
+
 # Application definition
 
 INSTALLED_APPS = [
