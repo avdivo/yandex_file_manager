@@ -25,12 +25,7 @@ SECRET_KEY = 'django-insecure-jvv)efwu6$h%%u!g1!@!c(3)f@@v8x*^fw^5xik_gb63ebwmfu
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['0.0.0.0', '127.0.0.1', 'https://7353-181-214-131-56.ngrok-free.app']
-
-# Настройки Yandex
-YANDEX_CLIENT_ID = "b3f68840644b4d06ae0b7ebe3deedc4a"
-YANDEX_CLIENT_SECRET = "2479217132434551a63414772617ce5e"
-YANDEX_REDIRECT_URI = "https://7353-181-214-131-56.ngrok-free.app/callback"
+ALLOWED_HOSTS = ['0.0.0.0', '127.0.0.1']
 
 # Application definition
 
@@ -84,6 +79,13 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+# Cache
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     }
 }
 

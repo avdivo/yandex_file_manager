@@ -1,5 +1,4 @@
 import aiohttp
-from typing import Dict, List
 
 from .cache import CacheService
 from .exceptions import InvalidYandexLinkError, OAuthRequiredError, YandexDiskError, DownloadError
@@ -16,7 +15,7 @@ class YandexDiskService:
         """
         self.base_url = "https://cloud-api.yandex.net/v1/disk/public/resources"
 
-    async def get_file_list(self, public_key: str) -> List[Dict]:
+    async def get_file_list(self, public_key: str) -> list[dict]:
         """
         Получение списка файлов и папок по публичной ссылке.
 
@@ -29,7 +28,7 @@ class YandexDiskService:
         if not self._is_yandex_link(public_key):
             raise InvalidYandexLinkError("Ссылка не относится к Яндекс.Диску", 422)
 
-        file_list = CacheService.get_cache(public_key)  # Пробуем получить список файла из кэша
+        file_list = await CacheService.get_cache(public_key)  # Пробуем получить список файла из кэша
         if file_list is None:
             # В кэше списка нет или он устарел
             url = f"{self.base_url}?public_key={public_key}"
@@ -58,8 +57,7 @@ class YandexDiskService:
                                 category = 'document'
                             file_list.append({'name': name, 'type': category})
 
-                        CacheService.save_cache(public_key, file_list)  # Сохраняем список в кэше
-                        return file_list
+                        await CacheService.save_cache(public_key, file_list)  # Сохраняем список в кэше
 
                     elif response.status == 401:
                         raise OAuthRequiredError("Для этого ресурса требуется авторизация.", 401)
@@ -67,6 +65,8 @@ class YandexDiskService:
                         raise YandexDiskError("Ошибка! Ссылка не найдена или недоступна.", 404)
                     else:
                         raise RuntimeError(await response.text(), response.status)
+
+        return file_list
 
     def _is_yandex_link(self, public_key: str) -> bool:
         """

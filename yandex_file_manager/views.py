@@ -1,4 +1,5 @@
 from django.views import View
+from django.urls import reverse
 from django.shortcuts import render, redirect
 from django.views.generic import TemplateView
 from django.http import JsonResponse, HttpResponse
@@ -20,7 +21,7 @@ class IndexView(TemplateView):
         :return: index.html
         """
         context = super().get_context_data(**kwargs)
-        message = kwargs.get('error_message', 'Пожалуйста, укажите публичную ссылку на папку Yandex.Disk')
+        message = self.request.GET.get('error_message', 'Пожалуйста, укажите публичную ссылку на папку Yandex.Disk')
         context['message'] = message  # Добавляем ошибку в контекст
         return context
 
@@ -42,7 +43,7 @@ class CatView(TemplateView):
         # Получаем публичную ссылку из параметров запроса
         public_key = request.GET.get("link")
         if not public_key:
-            return render(request, 'index.html', {'error_message': 'Ошибка! Ссылка не может быть пустой.'})
+            return redirect(f'{reverse("index")}?error_message=Ошибка! Ссылка не может быть пустой.')
 
         # Создаем экземпляр сервиса
         yandex_service = YandexDiskService()
@@ -54,17 +55,17 @@ class CatView(TemplateView):
             return self.render_to_response(context)  # Отображаем страницу
 
         except InvalidYandexLinkError as e:
-            print(e)
-            return redirect('index.html', {'error_message': str(e)})
+            return redirect(f'{reverse("index")}?error_message={e}')
 
         except OAuthRequiredError as e:
-            return render(request, 'index.html', {'error_message': e})
+            return redirect(f'{reverse("index")}?error_message={e}')
 
         except YandexDiskError as e:
-            return render(request, 'index.html', {'error_message': e})
+            return redirect(f'{reverse("index")}?error_message={e}')
 
         except Exception as e:
-            return render(request, 'index.html', {'error_message': f'Неизвестная ошибка: {e}'})
+            raise
+            return redirect(f'{reverse("index")}?error_message={f'Неизвестная ошибка: {e}'}')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
